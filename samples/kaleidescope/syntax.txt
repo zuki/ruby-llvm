@@ -1,0 +1,38 @@
+top ::= definition | external | toplevelexpr | ''
+
+definition ::= 'def' prototype expression
+
+external ::= 'extern' prototype
+
+toplevelexpr ::= expression
+
+expression ::= unary binoprhs
+
+prototype
+   ::= id '(' id* ')'
+   ::= binary LETTER number? (id, id)
+   ::= unary LETTER (id)
+
+unary
+   ::= primary
+   ::= '!' unary
+
+binoprhs
+   ::= ('+'|'-'|'*'|'/'|'<'|'=' unary)*
+
+primary
+   ::= identifierexpr
+   ::= numberexpr
+   ::= parenexpr
+   ::= ifexpr
+   ::= forexpr
+   ::= varexpr
+
+identifierexpr
+   ::= identifier
+   ::= identifier '(' expression* ')'
+numberexpr ::= number
+parenexpr ::= '(' expression ')'
+ifexpr ::= 'if' expression 'then' expression 'else' expression
+forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
+varexpr ::= 'var' identifier ('=' expression)?  (',' identifier ('=' expression)?)* 'in' expression

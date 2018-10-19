@@ -1,0 +1,9 @@
+def binary : 1 (x y) y;
+
+def conv(x)
+  put(x) :
+  (x = 83) :
+  put(x);
+
+# Call it.
+conv(75);

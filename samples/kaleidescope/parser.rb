@@ -8,7 +8,7 @@ require "if_ast"
 # Parser
 #===----------------------------------------------------------------------===#
 class Parser
-  
+
   def initialize stream = $stdin
     puts "ready> " if stream == $stdin
     @lexer = Lexer.new stream
@@ -20,7 +20,7 @@ class Parser
   end
 
   # Error* - These are little helper functions for error handling.
-  def error(message) 
+  def error(message)
     puts  "Error: #{message}"
     nil # return nil for chaining, ie return error("went wrong")
   end
@@ -88,12 +88,13 @@ class Parser
     token = _then.to
     return mismatch("else" , token) if (token.value != "else")
     token = token.next # eat the else
-    return nil unless _else = parseExpression(token) # eat the else
+    return nil unless _else = parseExpression(token)
     token = _else.to
     return IfExprAST.new(condition, _then, _else)
   end
 
   # forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
+  # 例:          for i = 0, i < 10, 2 in puts(i)
   def parseForExpr token
     #puts "parseForExpr #{token}"
     from = token
@@ -125,31 +126,34 @@ class Parser
 
   # varexpr ::= 'var' identifier ('=' expression)?
   #                    (',' identifier ('=' expression)?)* 'in' expression
-  def parseVarExpr
+  def parseVarExpr token
     #puts "parseVarExpr #{token}"
-    nextToken  # eat the var.
-    varNames = [] # of arrays of 2
+    from = token
+    token = token.next # eat the var.
+    # std::vector<std::pair<std::string, ExprAST*> > VarNames;
+    varNames = [] # 要素2の配列の配列
     # At least one variable name is required.
-    return mismatch("identifier after var") if token != :identifier
-    while (1) 
-      name = @lexer.current_identifier
-      nextToken  # eat identifier.
+    return mismatch("identifier after var", token ) if token.kind != :identifier
+    while (1)
+      name = token.value
+      token = token.next # eat identifier.
       # Read the optional initializer.
       init = nil
-      if token == '='
-        nextToken # eat the '='.
-        return nil unless init = parseExpression
+      if token.value == '='
+        token = token.next # eat the '='.
+        return nil unless init = parseExpression(token)
+        token = init.to
       end
       varNames << [name, init]
-      break if (token != ',') # End of var list, exit loop.
-      nextToken # eat the ','.
-      return mismatch("identifier list after var") if token != :identifier
+      break if (token.value != ',') # End of var list, exit loop.
+      token = token.next # eat the ','.
+      return mismatch("identifier list after var", token) if token.kind != :identifier
     end
     # At this point, we have to have 'in'.
-    return mismatch("'in' keyword after 'var'") if token != :tok_in
-    nextToken  # eat 'in'.
-    return nil unless body = parseExpression
-    return VarExprAST.new(varNames, body)
+    return mismatch("'in' keyword after 'var'", token ) if token.value != "in"
+    token = token.next # eat 'in'.
+    return nil unless body = parseExpression(token)
+    return VarExprAST.new(varNames, body, from, body.to)
   end
 
   # primary
@@ -195,7 +199,7 @@ class Parser
     opc = token.value
     token = token.next
     if (operand = parseUnary(token))
-      return UnaryExprAST.new(opc, operand, from) 
+      return UnaryExprAST.new(opc, operand, from)
     end
     return nil
   end
@@ -208,10 +212,9 @@ class Parser
     # If this is a binop, find its precedence.
     while true   # If this is a binop that binds at least as tightly as the current binop,
       precedence = ExprAST.precedence_for(token)    # consume it, otherwise we are done.
-      #puts "Precedence for #{token} is #{precedence}, returning #{(precedence < exprPrec)}"
+      #puts "[1] Precedence for #{token} is #{precedence}, returning #{(precedence < exprPrec)}"
       return lhs if (precedence < exprPrec)
       # Okay, we know this is a binop.
-      operator_precedence = ExprAST.precedence_for(token)
       operator = token.value
       token = token.next  # eat binop
       # Parse the unary expression after the binary operator.
@@ -219,12 +222,14 @@ class Parser
       token = rhs.to
       # If operator binds less tightly with rhs than the operator after rhs, let
       # the pending operator take rhsas its lhs .
-      #puts "Precedence for #{operator} is #{operator_precedence},  #{(precedence < operator_precedence)}"
+      operator_precedence = ExprAST.precedence_for(token)
+      #puts "[2] Precedence for #{operator} is #{operator_precedence},  #{(precedence < operator_precedence)}"
       if precedence < operator_precedence
         return nil unless rhs = parseBinOprhs(precedence+1, rhs)
         token = rhs.to
       end
       # Merge lhs /rhs.
+      #puts "BinaryExpr: ope='#{operator}', pres='#{operator_precedence}', lhs='#{lhs}', rhs='#{rhs}'"
       lhs = BinaryExprAST.new(operator, lhs , rhs)
     end
   end
@@ -284,13 +289,13 @@ class Parser
     while (token.kind == :identifier)
       argNames << token.value
       token = token.next
-    end   
+    end
     return mismatch("')' in prototype #{argNames.length}" , token) if (token.value != ")")
     # success.
     token = token.next  # eat ')'.
     # Verify right number of names for operator.
     if (kind != 0) and (argNames.length != kind)
-      return error("Invalid number of operands for operator #{argNames.length} not #{kind}") 
+      return error("Invalid number of operands for operator #{argNames.length} not #{kind}")
     end
     puts "Function parsed #{function_name} with #{argNames.join('-')}"
     return PrototypeAST.new(function_name, argNames, kind != 0, precedence , from , token)
@@ -322,4 +327,3 @@ class Parser
   end
 
 end
-

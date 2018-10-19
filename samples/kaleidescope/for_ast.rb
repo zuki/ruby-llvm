@@ -1,5 +1,5 @@
 # ForExprAST - Expression class for for/in.
-class ForExprAST < ExprAST 
+class ForExprAST < ExprAST
   def initialize(varname, start, _end, _step, _body , from)
     super(from , _body.to)
     @varName, @start, @end, @step , @body = varname, start , _end, _step, _body
@@ -44,7 +44,7 @@ class ForExprAST < ExprAST
     # makes bariable accessible to boby code. (not shadowed as in tutorial)
     ExprAST.named_values[@varName] = alloca
 
-    # Emit the body of the loop.  This, like any other expr, can change the current BB.  
+    # Emit the body of the loop.  This, like any other expr, can change the current BB.
     return nil unless loop_val = @body.code(the_module , builder)
 
     # Emit the step value.
@@ -58,7 +58,7 @@ class ForExprAST < ExprAST
     endCond = @end.code(the_module , builder)
     return nil unless endCond
     # Create the "after loop" block and insert it.
-    afterBB = theFunction.basic_blocks.append "afterloop" 
+    afterBB = theFunction.basic_blocks.append "afterloop"
     # Convert condition to a bool by comparing equal to 0.0.
     endCond = builder.fcmp(:oeq , endCond, LLVM.Double(0.0) , "loopcond")
     # Insert the conditional branch into the end of LoopEndBB.

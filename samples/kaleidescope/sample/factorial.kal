@@ -9,4 +9,4 @@ def factorial(n)
     put( 48 )  :
     n * factorial(n - 1.0)
 
-factorial(40)
+factorial(10)

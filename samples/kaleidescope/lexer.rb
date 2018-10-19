@@ -1,11 +1,12 @@
 require "token"
 
-# the lexer creates a linked list (stream) of tokens from the io-stream
-# As the tokens are linked and lazily generate more from the lexer, the lexer is really
-# only used to start it off
-# 
-# This lexer read whole lines at a time and an end of line always means end of token
-# The lexer assumes a parser is used and this will be used to process new tokens from lexers tokens
+# レキサはioストリームからトークンの連結リスト（ストリーム）を作成する。
+# トークンは連結されており、レキサにより遅延生成されるので、レキサは
+# 実際には開始時にしか使用されない。
+#
+# このレキサは一度に全行を読み込む。行の終わりはトークンの終わりを意味する。
+# レキサはレキサトークンから新しいトークンを処理するパーサの存在を前提と
+# している。
 class Lexer
   @@kinds = {
     :identifier => /^([a-z][_a-zA-Z0-9]*)/  ,
@@ -27,7 +28,7 @@ class Lexer
     end
     before.next = tok
   end
-  
+
   def from line , number , before
     #remove whitespace from start and end
     line = line.strip

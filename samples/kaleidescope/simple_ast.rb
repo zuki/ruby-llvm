@@ -4,11 +4,11 @@
 
 #todo  static FunctionPassManager *TheFPM
 
-# ExprAST - Base class for all expression nodes.
+# ExprAST - すべての式(expression)ノードの基底クラス
 class ExprAST
-  @@named_values = {}  #originally   static std::map<std::string, AllocaInst*>
-  
-  # @operator_precedences - This holds the precedence for each binary operator that is defined.
+  @@named_values = {}  #オリジナルの定義   static std::map<std::string, AllocaInst*>
+
+  # @operator_precedences - 定義される二項演算子の優先度を保持する
   @@operator_precedences = {}
   @@operator_precedences["="] = 2
   @@operator_precedences["<"] = 10
@@ -16,7 +16,7 @@ class ExprAST
   @@operator_precedences["-"] = 20
   @@operator_precedences["/"] = 40
   @@operator_precedences["*"] = 40  # highest.
-  # precedence_for - Get the precedence of the pending binary operator token.
+  # precedence_for - 該当する二項演算子の優先度を取得する
   def self.precedence_for(token )
     return -1 if token.kind != :single
     return -1 if token.ascii?
@@ -30,7 +30,10 @@ class ExprAST
   def self.named_values
     @@named_values
   end
-  
+  def self.operator_precedences
+    @@operator_precedences
+  end
+
   attr_reader :from , :to
   def initialize from , to
     @from , @to = from , to
@@ -39,17 +42,17 @@ class ExprAST
   def advance
     @to = @to.next
   end
-  def code(the_module , builder) 
-    raise "abstract" 
+  def code(the_module , builder)
+    raise "abstract"
   end
 
-  def error(str) 
-    puts "Error: #{str}" 
+  def error(str)
+    puts "Error: #{str}"
     return nil
   end
-  
-  # createEntryBlockAlloca - Create an alloca instruction in the entry block of
-  # the function.  This is used for mutable variables etc.
+
+  # createEntryBlockAlloca - 関数のentoryブロックのalloca命令を作成する。
+  # mutable変数などで使用される。
   #static AllocaInst *
   def createEntryBlockAlloca(theFunction, varName)
 #    IRBuilder<> TmpB(TheFunction.getEntryBlock, TheFunction.getEntryBlock.begin )
@@ -57,8 +60,8 @@ class ExprAST
   end
 end
 
-# NumberExprAST - Expression class for numeric literals like "1.0".
-class NumberExprAST < ExprAST 
+# NumberExprAST - "1.0"などの数値リテラルの式クラス。
+class NumberExprAST < ExprAST
   def initialize(val , from , to )
     super(from,to)
     @value = val.to_f
@@ -71,12 +74,12 @@ class NumberExprAST < ExprAST
   end
 end
 
-# UnaryExprAST - Expression class for a unary operator.
-class UnaryExprAST < ExprAST 
+# UnaryExprAST - 単項演算子の式クラス
+class UnaryExprAST < ExprAST
   def initialize(opcod, operan , from)
     super(from , operan.to)
     @opcode = opcod
-    @operand = operan 
+    @operand = operan
   end
   def code( the_module , builder )
     # value means an LLVM::Value
@@ -91,21 +94,21 @@ class UnaryExprAST < ExprAST
   end
 end
 
-# BinaryExprAST - Expression class for a binary operator.
-class BinaryExprAST < ExprAST 
+# BinaryExprAST - 二項演算子の式クラス
+class BinaryExprAST < ExprAST
   def initialize(op, lhs, rhs )
     super(lhs.from , rhs.to)
     @op , @lhs ,  @rhs= op , lhs, rhs
   end
 
-  def equals(builder)
+  def equals(the_module, builder)
     # Assignment requires the lhs to be an identifier.
     return error("destination of '=' must be a variable , not #{@lhs }") unless (@lhs .is_a? VariableExprAST)
 
     return nil unless value = @rhs.code(the_module , builder) # code the RHS.
 
     # Look up the name.
-    return error("Unknown variable #{lhs.name}") unless variable = @@named_values[lhs .name]
+    return error("Unknown variable #{lhs.name}") unless variable = @@named_values[@lhs.name]
 
     builder.store(value, variable)
     return value
@@ -113,14 +116,14 @@ class BinaryExprAST < ExprAST
 
   def code(the_module , builder)
     # Special case '=' because we don't want to emit the lhs as an expression.
-    return equals(builder) if (@op == "=") 
+    return equals(the_module, builder) if (@op == "=")
 
     left = @lhs.code(the_module , builder)
     right = @rhs.code(the_module , builder)
     return nil if (!left || !right)
 
     case (@op)
-    when '+' 
+    when '+'
       return builder.fadd(left, right, "addtmp")
     when '-'
       return builder.fsub(left, right, "subtmp")
@@ -134,8 +137,8 @@ class BinaryExprAST < ExprAST
       return builder.ui2fp(bool, LLVM::Double, "booltmp")
     end
 
-    # If it wasn't a builtin binary operator, it must be a user defined one. Emit
-    # a call to it.
+    # 演算子が組み込みの2項演算子ではない場合は、ユーザ定義の
+    # 演算子であるので、それを呼び出す。
     function = the_module.functions["binary#{@op}"]
     raise "#{@op} binary operator not found!" unless function
 
@@ -146,13 +149,13 @@ class BinaryExprAST < ExprAST
   end
 end
 
-# CallExprAST - Expression class for function calls.
-class CallExprAST < ExprAST 
+# CallExprAST - 関数呼び出しの式クラス
+class CallExprAST < ExprAST
   def initialize(callee, args , from , to)
     super(from , to)
     @callee , @args = callee, args
   end
-  def code(the_module , builder) 
+  def code(the_module , builder)
     # Look up the name in the global module table.
     callee = the_module.functions[@callee]
     return error("Unknown function referenced: #{@callee}") unless callee

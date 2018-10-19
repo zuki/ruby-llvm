@@ -2,7 +2,6 @@
 # which captures its name, and its argument names (thus implicitly the number
 # of arguments the function takes), as well as if it is an operator.
 class PrototypeAST < ExprAST
-  
   def initialize(name, args, isoperator = false, prec = 0  , from , to)
     super(from , to)
     @name , @args , @isOperator , @precedence  = name , args, isoperator ,prec
@@ -11,20 +10,20 @@ class PrototypeAST < ExprAST
     "#{@name} , #{@args} , #{@isOperator} , #{@precedence}"
   end
   def isUnaryOp
-    return @isOperator && @args.length == 1 
+    return @isOperator && @args.length == 1
   end
 
   def isBinaryOp
-    return @isOperator && @args.length == 2 
+    return @isOperator && @args.length == 2
   end
 
   def getOperatorName
-    trow self unless isUnaryOp || isBinaryOp
+    throw self unless isUnaryOp || isBinaryOp
     return @name[@name.length - 1]
   end
 
-  def getBinaryPrecedence 
-    return @precedence 
+  def getBinaryPrecedence
+    return @precedence
   end
 
   # CreateArgumentAllocas - Create an alloca for each argument and register the
@@ -47,7 +46,7 @@ class PrototypeAST < ExprAST
       return error("redefinition of function") unless was.empty
 
       # If F took a different number of args, reject.
-      return error("redefinition of function with different # args") if (was.params.size != @args.length) 
+      return error("redefinition of function with different # args") if (was.params.size != @args.length)
       function = was
     else
       # Make the function type:  double(double,double) etc.
@@ -62,4 +61,3 @@ class PrototypeAST < ExprAST
     return function
   end
 end
-

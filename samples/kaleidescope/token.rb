@@ -1,18 +1,18 @@
-
-# tokens are a linked list. one way only, as the call stack provides the other direction
-# this provides for "infinate" lookahead (but lazily)
-# kind is a symbol denoting the kind (identifier/number... see lexer)
+# 「無限の」（ただし遅延の）先読みを提供するコールスタックが逆方向を
+# 提供するので、tokensは一方向の連結リストである。
+# kindは種類（識別子や数など）を示すシンボルである。(lexerを参照）
 class Token
   attr_reader  :line_number , :value , :kind
   def initialize line_number , value , kind , lexer
     @line_number , @value , @kind = line_number , value , kind
     @next = lexer
   end
-  # lazily resolve the next. Ie for the last in a line, we set the lexer as the next and resolve from it if needed
+  # nextの解決を遅延する。行の最後でnextにlexerをセットして、必要に応じて
+  # そこを使って解決する。
   def next
     if @next.is_a? Lexer  #this changes the next variable
       #puts "READLINE"
-      @next.readline(self) 
+      @next.readline(self)
     end
     @next
   end
@@ -30,4 +30,3 @@ class Token
     "#{value} #{self.next.all if self.next}"
   end
 end
-

@@ -83,7 +83,7 @@ class Driver
         builder.ret LLVM::Int(0)
       end
     end
-    
+
     @module.dump
   end
 end
@@ -134,5 +134,3 @@ driver.dump
 #  OurFPM.add(createCFGSimplificationPass())
 
 #  OurFPM.doInitialization()
-
-
