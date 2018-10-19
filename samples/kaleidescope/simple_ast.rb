@@ -42,7 +42,7 @@ class ExprAST
   def advance
     @to = @to.next
   end
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     raise "abstract"
   end
 
@@ -66,7 +66,7 @@ class NumberExprAST < ExprAST
     super(from,to)
     @value = val.to_f
   end
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     return LLVM.Double(@value)
   end
   def to_s
@@ -81,7 +81,7 @@ class UnaryExprAST < ExprAST
     @opcode = opcod
     @operand = operan
   end
-  def code( the_module , builder )
+  def code(the_module, builder, the_fpm)
     # value means an LLVM::Value
     value = @operand.code the_module , builder
     return nil unless value
@@ -101,11 +101,11 @@ class BinaryExprAST < ExprAST
     @op , @lhs ,  @rhs= op , lhs, rhs
   end
 
-  def equals(the_module, builder)
+  def equals(the_module, builder, the_fpm)
     # Assignment requires the lhs to be an identifier.
     return error("destination of '=' must be a variable , not #{@lhs }") unless (@lhs .is_a? VariableExprAST)
 
-    return nil unless value = @rhs.code(the_module , builder) # code the RHS.
+    return nil unless value = @rhs.code(the_module, builder, the_fpm) # code the RHS.
 
     # Look up the name.
     return error("Unknown variable #{lhs.name}") unless variable = @@named_values[@lhs.name]
@@ -114,12 +114,12 @@ class BinaryExprAST < ExprAST
     return value
   end
 
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     # Special case '=' because we don't want to emit the lhs as an expression.
-    return equals(the_module, builder) if (@op == "=")
+    return equals(the_module, builder, the_fpm) if (@op == "=")
 
-    left = @lhs.code(the_module , builder)
-    right = @rhs.code(the_module , builder)
+    left = @lhs.code(the_module, builder, the_fpm)
+    right = @rhs.code(the_module, builder, the_fpm)
     return nil if (!left || !right)
 
     case (@op)
@@ -155,7 +155,7 @@ class CallExprAST < ExprAST
     super(from , to)
     @callee , @args = callee, args
   end
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     # Look up the name in the global module table.
     callee = the_module.functions[@callee]
     return error("Unknown function referenced: #{@callee}") unless callee
@@ -163,7 +163,7 @@ class CallExprAST < ExprAST
     # If argument mismatch error.
     return error("Incorrect # arguments passed") if (callee.params.size != @args.length )
 
-    argsV = @args.collect {|arg| arg.code(the_module , builder) }
+    argsV = @args.collect {|arg| arg.code(the_module, builder, the_fpm) }
     #puts "calling #{self} with #{argsV.first.class}"
     return builder.call(callee, *argsV, "calltmp")
   end

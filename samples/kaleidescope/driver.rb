@@ -6,6 +6,7 @@ $LOAD_PATH.unshift(File.dirname(__FILE__))
 require 'llvm/core'
 require 'llvm/execution_engine'
 require 'llvm/transforms/scalar'
+require 'llvm/core/pass_manager'
 require "parser"
 
 #static ExecutionEngine *TheExecutionEngine
@@ -17,6 +18,7 @@ class Driver
     @module = LLVM::Module.new("Kaleidescope")
     @builder = LLVM::Builder.new
     @engine = LLVM::JITCompiler.new(@module)
+    @fpm = LLVM::FunctionPassManager.new(@engine, @module)
     # We define a putchard (as per tutorial chapter 6), as we cant link it in by writing c
     # to do that we do need to define the putchar (stdlibc take a int as external first)
     putchar = @module.functions.add( "putchar" , [LLVM::Int] , LLVM::Int )
@@ -28,6 +30,15 @@ class Driver
         builder.ret arg
       end
     end
+    setPasses
+  end
+
+  def setPasses
+    @fpm.basicaa!
+    @fpm.mem2reg!
+    @fpm.instcombine!
+    @fpm.reassociate!
+    @fpm.gvn!
   end
 
   # top ::= definition | external | expression | ''
@@ -39,7 +50,7 @@ class Driver
       case token.value
       when "def"
         if function_ast = @parser.parseDefinition(token)
-          if function_code = function_ast.code(@module ,@builder)
+          if function_code = function_ast.code(@module, @builder, @fpm)
             #puts "Read function definition:"
             #function_code.dump
           end
@@ -50,7 +61,7 @@ class Driver
         end
       when "extern"
         if proto = @parser.parseExtern(token)
-          if function = proto.code(@module ,@builder)
+          if function = proto.code(@module, @builder, @fpm)
             puts "Read extern: "
             function.dump
           end
@@ -61,7 +72,7 @@ class Driver
       else
         # Evaluate a top-level expression into an anonymous function.
         if functionAST = @parser.parseTopLevelExpr(token)
-          if function = functionAST.code(@module ,@builder)
+          if function = functionAST.code(@module, @builder, @fpm)
             res = @engine.run_function function
             puts "Evaluated #{functionAST.body} to #{res.to_f(LLVM::Double.type)}"
           end

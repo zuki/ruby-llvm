@@ -10,7 +10,7 @@ class VariableExprAST < ExprAST
   def to_s
     "#{@name}"
   end
-  def code the_module , builder
+  def code the_module, builder, the_fpm
     # Look this variable up in the function.
     value = @@named_values[@name]
     return error("Variable unknown #{@name}") if value == nil
@@ -30,7 +30,7 @@ class VarExprAST < ExprAST
   def to_s
     "#{@varNames} #{@body}"
   end
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     # std::vector<AllocaInst *> OldBindings;
     oldBindings = {}
 
@@ -44,7 +44,7 @@ class VarExprAST < ExprAST
       #    var a = a in ...   # refers to outer 'a'.
       initVal = nil
       if (init)
-        initVal = init.code(the_module , builder)
+        initVal = init.code(the_module, builder, the_fpm)
         return nil unless initVal
       else # If not specified, use 0.0.
         initVal = LLVM.Double(0)
@@ -63,7 +63,7 @@ class VarExprAST < ExprAST
     end
 
     # code the body, now that all vars are in scope.
-    return nil unless bodyVal = @body.code(the_module , builder)
+    return nil unless bodyVal = @body.code(the_module, builder, the_fpm)
 
     # Pop all our variables from scope.
     @varNames.each do |varName, second|

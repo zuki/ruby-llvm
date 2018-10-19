@@ -38,7 +38,7 @@ class PrototypeAST < ExprAST
     end
   end
 
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     # If there was already something named 'Name'.  If it has a
     # body, don't allow redefinition or reextern.
     if (was = the_module.functions.named(@name))

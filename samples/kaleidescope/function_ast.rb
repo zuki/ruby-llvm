@@ -5,11 +5,11 @@ class FunctionAST < ExprAST
     super(proto.from , body.to)
     @proto, @body = proto , body
   end
-  def code(the_module , builder)
+  def code(the_module, builder, the_fpm)
     #puts "Function #{self}"
     ExprAST.named_values.clear()
 
-    return nil unless theFunction = @proto.code(the_module , builder)
+    return nil unless theFunction = @proto.code(the_module, builder, the_fpm)
 
     # If this is an operator, install it.
     ExprAST.set_precedence( @proto.getOperatorName,  @proto.getBinaryPrecedence ) if @proto.isBinaryOp
@@ -21,7 +21,7 @@ class FunctionAST < ExprAST
     # Add all arguments to the symbol table and create their allocas.
     @proto.createArgumentAllocas(theFunction , builder)
 
-    unless retVal = @body.code(the_module , builder)
+    unless retVal = @body.code(the_module, builder, the_fpm)
       # Error reading body, remove function.
       LLVM::C.delete_function(theFunction)
       ExprAST.set_precedence(@proto.getOperatorName , nil ) if @proto.isBinaryOp
@@ -31,12 +31,12 @@ class FunctionAST < ExprAST
     builder.ret(retVal)
     # Validate the generated code, checking for consistency.
     theFunction.verify
-    
+
     # Optimize the function.tbd   --- TheFPM.run(theFunction)
+    the_fpm.run(theFunction)
     return theFunction
   end
   def to_s
     "def #{@proto}\n#{@body}"
   end
 end
-
